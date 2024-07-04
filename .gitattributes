@@ -1,0 +1,2 @@
+lds-weights/model_fold_4.pth filter=lfs diff=lfs merge=lfs -text
+fastapi-env/lib/python3.11/site-packages/torch/lib/libtorch_cpu.dylib filter=lfs diff=lfs merge=lfs -text
