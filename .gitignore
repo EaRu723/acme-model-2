@@ -4,3 +4,5 @@ fastapi-env/
 /fastapi-env/**/*
 /fastapi-env/**/
 /fastapi-env
+
+.DS_Store
