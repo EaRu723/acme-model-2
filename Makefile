@@ -1,2 +1,2 @@
 connect:
-	ssh root@146.190.66.114 -i ~/.ssh/id_ed25519
+	ssh root@159.89.55.72 -i ~/.ssh/id_ed25519
