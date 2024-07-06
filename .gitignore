@@ -9,3 +9,20 @@ fastapi-env/
 
 .DS_Store
 .vercel
+
+
+# Ignore virtual environments
+myenv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.log
+
+# Ignore large files and directories
+*.so
+*.bin
