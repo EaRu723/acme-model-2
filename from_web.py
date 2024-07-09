@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = ModelInit(path_checkpoint="/Users/andrea/Documents/acne-model/lds-weights/model_fold_4.pth")
+model = ModelInit(path_checkpoint="/root/acme-model-2/lds-weights/model_fold_4.pth")
 
 @app.get("/testing")
 async def testing_endpoint():
