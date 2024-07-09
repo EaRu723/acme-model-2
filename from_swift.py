@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-model = ModelInit(path_checkpoint="/root/acme-model-2/lds-weights/model_fold_4.pth")
+model = ModelInit(path_checkpoint="lds-weights/model_fold_4.pth")
 
 @app.post("/upload-images/")
 async def upload_images(left_image: UploadFile = File(...), right_image: UploadFile = File(...)):
