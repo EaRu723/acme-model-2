@@ -64,4 +64,4 @@ async def upload_images(left_image: UploadFile = File(...), right_image: UploadF
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="192.168.1.59", port=8000)
+    uvicorn.run(app, host="104.248.118.84", port=8000)
