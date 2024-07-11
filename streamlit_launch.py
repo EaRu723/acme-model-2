@@ -1,6 +1,3 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from PIL import Image
 from predict_on_img import ModelInit
 import io
@@ -10,7 +7,6 @@ import streamlit as st
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
 
 model = ModelInit(path_checkpoint="lds-weights/model_fold_4.pth")
 
@@ -41,7 +37,6 @@ if left_image and right_image:
             logger.info("Left image processed successfully")
         except Exception as e:
             logger.error(f"Invalid left image format: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Invalid left image format: {str(e)}")
 
         # Read and process the right image
         right_image_data = right_image.read()
@@ -53,20 +48,30 @@ if left_image and right_image:
             logger.info("Right image processed successfully")
         except Exception as e:
             logger.error(f"Invalid right image format: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Invalid right image format: {str(e)}")
-
         # Get predictions
-        left_predictions = model.predict_on_img(left_img)
-        right_predictions = model.predict_on_img(right_img)
-
+        logger.info("Making predictions on images")
+        try:
+            left_predictions = model.predict_on_img(left_img)
+            right_predictions = model.predict_on_img(right_img)
+        except Exception as e:
+            logger.error(f"Error making predictions: {str(e)}")
+            st.write(f"Error making predictions: {str(e)}")
         # Convert predictions to list
         left_predictions = [tensor.tolist() for tensor in left_predictions]
         right_predictions = [tensor.tolist() for tensor in right_predictions]
 
         logger.info("Image processing and prediction successful")
 
-        st.write("Left image predictions:", left_predictions)
-        st.write("Right image predictions:", right_predictions)
+        logger.info(f"Image pred type: {left_predictions[0][0]}")
+
+        st.write("Left image predictions:")
+        st.write("Left severity score:", left_predictions[0][0])
+        st.write("Left number of blemishes:", left_predictions[1][0])
+
+        st.write("Right image predictions:")
+        st.write("Right severity score:", right_predictions[0][0])
+        st.write("Right number of blemishes:", right_predictions[1][0])
+
 
     except Exception as e:
         logger.error(f"Error processing images: {str(e)}")
