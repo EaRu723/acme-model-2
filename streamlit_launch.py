@@ -11,7 +11,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def save_prediction(db, user_email, side, scores):
+def save_prediction(db, user_email, side, scores, img_url):
     scores_dict = {
         "severity_score": scores[0][0],
         "num_blemishes": scores[1][0]
@@ -23,7 +23,8 @@ def save_prediction(db, user_email, side, scores):
     predictions_col_ref.add({
         'side': side,
         'scores': scores_dict,
-        'date': datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        'date': datetime.datetime.now(), # Switch to timestamp
+        'img_url': img_url # 'gs://acne-severity-score.appspot.com/webApp/{user}/{side}.jpg
     })
 
 def save_image(user_email, side, img, img_name=None):
@@ -41,6 +42,9 @@ def save_image(user_email, side, img, img_name=None):
     except Exception as e:
         st.write("Image already uploaded")
     os.remove(temp_file_path)
+
+    # return firebase image url
+    return blob.url
 
 
 # Get credentials from streamlit secrets
@@ -113,7 +117,7 @@ if (left_image and right_image):
             logger.error(f"Invalid left image format: {str(e)}")
 
         if email and left_img:
-            save_image(email, "left", left_img, left_image.name)
+            left_img_url = save_image(email, "left", left_img, left_image.name)
 
         # Read and process the right image
         right_image_data = right_image.read()
@@ -127,7 +131,7 @@ if (left_image and right_image):
             logger.error(f"Invalid right image format: {str(e)}")
 
         if email and right_img:
-            save_image(email, "right", right_img, right_image.name)
+            right_img_url = save_image(email, "right", right_img, right_image.name)
 
         # Get predictions
         logger.info("Making predictions on images")
@@ -160,8 +164,8 @@ if (left_image and right_image):
 
         # Acne score storage in firebase db
         if email:
-            save_prediction(database, email, "left", left_predictions)
-            save_prediction(database, email, "right", right_predictions)
+            save_prediction(database, email, "left", left_predictions, left_img_url)
+            save_prediction(database, email, "right", right_predictions, right_img_url)
 
     except Exception as e:
         logger.error(f"Error processing images: {str(e)}")
@@ -184,7 +188,7 @@ if front_image:
             logger.error(f"Invalid front image format: {str(e)}")
 
         if email and front_img:
-            save_image(email, "front", front_img, front_image.name)
+            front_img_url = save_image(email, "front", front_img, front_image.name)
 
         # Get predictions
         logger.info("Making predictions on front image")
@@ -204,7 +208,7 @@ if front_image:
 
         # Score storage in firebase database
         if email:
-            save_prediction(database, email, "front", front_predictions)
+            save_prediction(database, email, "front", front_predictions, front_img_url)
 
 
     except Exception as e:
