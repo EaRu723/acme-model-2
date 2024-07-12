@@ -9,11 +9,13 @@ fastapi-env/
 
 .DS_Store
 .vercel
-
+.vscode
+.devcontainer/
 
 # Ignore virtual environments
 myenv/
-
+venv/
+.streamlit/
 # Ignore Python cache files
 __pycache__/
 *.pyc
