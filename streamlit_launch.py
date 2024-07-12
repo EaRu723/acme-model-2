@@ -44,7 +44,7 @@ def save_image(user_email, side, img, img_name=None):
     os.remove(temp_file_path)
 
     # return firebase image url
-    return blob.url
+    return  f"gs://{st.secrets['storageBucket']}/webApp/{user}/{img_name}"
 
 
 # Get credentials from streamlit secrets
