@@ -11,6 +11,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@st.cache_data
 def save_prediction(db, user_email, side, scores, img_url):
     scores_dict = {
         "severity_score": scores[0][0],
@@ -27,6 +28,7 @@ def save_prediction(db, user_email, side, scores, img_url):
         'img_url': img_url # 'gs://acne-severity-score.appspot.com/webApp/{user}/{side}.jpg
     })
 
+@st.cache_resource
 def save_image(user_email, side, img, img_name=None):
     user = user_email.replace("@", "_").replace(".", "_")
     # Left image loaded, store in firebase
@@ -48,41 +50,45 @@ def save_image(user_email, side, img, img_name=None):
 
 
 # Get credentials from streamlit secrets
-try:
-    if not firebase_admin._apps:
-        cred = credentials.Certificate({
-            "type": "service_account",
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"],
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets["client_id"],
-            "auth_uri": st.secrets["auth_uri"],
-            "token_uri": st.secrets["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["client_x509_cert_url"]
-        })
-        firebase_admin.initialize_app(cred, {'storageBucket': st.secrets['storageBucket']})
-    else:
-        app = firebase_admin.get_app()
-        cred = credentials.Certificate({
-            "type": "service_account",
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"],
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets["client_id"],
-            "auth_uri": st.secrets["auth_uri"],
-            "token_uri": st.secrets["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["client_x509_cert_url"]
-        })
-except Exception as e:
-    logger.error(f"Error initializing firebase app in prod: {str(e)}")
+@st.cache_resource
+def init_firebase():
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": st.secrets["project_id"],
+                "private_key_id": st.secrets["private_key_id"],
+                "private_key": st.secrets["private_key"],
+                "client_email": st.secrets["client_email"],
+                "client_id": st.secrets["client_id"],
+                "auth_uri": st.secrets["auth_uri"],
+                "token_uri": st.secrets["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+            })
+            firebase_admin.initialize_app(cred, {'storageBucket': st.secrets['storageBucket']})
+        else:
+            app = firebase_admin.get_app()
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": st.secrets["project_id"],
+                "private_key_id": st.secrets["private_key_id"],
+                "private_key": st.secrets["private_key"],
+                "client_email": st.secrets["client_email"],
+                "client_id": st.secrets["client_id"],
+                "auth_uri": st.secrets["auth_uri"],
+                "token_uri": st.secrets["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+            })
+    except Exception as e:
+        logger.error(f"Error initializing firebase app in prod: {str(e)}")
 
-database = firestore.client()
+    database = firestore.client()
 
-model = ModelInit(path_checkpoint="lds-weights/model_fold_4.pth")
+@st.cache_resource
+def load_model():
+    return ModelInit(path_checkpoint="lds-weights/model_fold_4.pth")
 
 # Define the main page
 
@@ -102,6 +108,7 @@ front_image = st.file_uploader("Upload front image", type=["jpg", "jpeg", "png"]
 
 
 if (left_image and right_image):
+    model = load_model()
     try:
         logger.info("Received image upload request")
 
@@ -117,6 +124,7 @@ if (left_image and right_image):
             logger.error(f"Invalid left image format: {str(e)}")
 
         if email and left_img:
+            init_firebase()
             left_img_url = save_image(email, "left", left_img, left_image.name)
 
         # Read and process the right image
@@ -131,6 +139,7 @@ if (left_image and right_image):
             logger.error(f"Invalid right image format: {str(e)}")
 
         if email and right_img:
+            init_firebase()
             right_img_url = save_image(email, "right", right_img, right_image.name)
 
         # Get predictions
@@ -173,6 +182,7 @@ if (left_image and right_image):
 
 
 if front_image:
+    model = load_model()
     try:
         logger.info("Received front image upload request")
 
@@ -188,6 +198,7 @@ if front_image:
             logger.error(f"Invalid front image format: {str(e)}")
 
         if email and front_img:
+            init_firebase()
             front_img_url = save_image(email, "front", front_img, front_image.name)
 
         # Get predictions
