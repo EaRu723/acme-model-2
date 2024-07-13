@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 @st.cache_data
-def save_prediction(db, user_email, side, scores, img_url):
+def save_prediction(_db, user_email, side, scores, img_url):
     user = user_email.replace("@", "_").replace(".", "_")
-    user_doc_ref = db.collection("webApp").document(user)
+    user_doc_ref = _db.collection("webApp").document(user)
     predictions_col_ref = user_doc_ref.collection("predictions")
     predictions_col_ref.add({
         'side': side,
@@ -29,10 +29,10 @@ def save_prediction(db, user_email, side, scores, img_url):
 
 
 @st.cache_resource
-def save_image(user_email, side, img, img_name):
+def save_image(user_email, side, _img, img_name):
     user = user_email.replace("@", "_").replace(".", "_")
     temp_file_path = f"temp_{side}.jpg"
-    img.save(temp_file_path, optimize=True, quality=85)
+    _img.save(temp_file_path, optimize=True, quality=85)
 
     bucket = storage.bucket()
     blob = bucket.blob(f"webApp/{user}/{img_name}")
