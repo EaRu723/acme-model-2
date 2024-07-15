@@ -11,7 +11,7 @@ from predict_on_img import ModelInit
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
+# Fix streamlit deployment error
 @st.cache_data
 def save_prediction(_db, user_email, side, scores, img_url):
     user = user_email.replace("@", "_").replace(".", "_")
