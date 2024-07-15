@@ -25,7 +25,7 @@ def save_prediction(db, user_email, side, scores, img_url):
         'side': side,
         'scores': scores_dict,
         'date': datetime.datetime.now(), # Switch to timestamp
-        'img_url': img_url # 'gs://acne-severity-score.appspot.com/webApp/{user}/{side}.jpg
+        'img_url': img_url
     })
 
 @st.cache_resource
