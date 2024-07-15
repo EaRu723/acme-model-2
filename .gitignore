@@ -11,6 +11,7 @@ fastapi-env/
 .DS_Store
 .vercel
 .vscode
+.idea
 .devcontainer/
 
 # Ignore virtual environments
