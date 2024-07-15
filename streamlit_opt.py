@@ -7,6 +7,7 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from predict_on_img import ModelInit
+import tempfile
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -68,7 +69,19 @@ def init_firebase():
 
 @st.cache_resource
 def load_model():
-    return ModelInit(path_checkpoint="lds-weights/model_fold_4.pth")
+    bucket = storage.bucket()
+    blob = bucket.blob("weights/model_fold_4.pth")
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as temp_file:
+        try:
+            blob.download_to_filename(temp_file.name)
+
+            # Load the model
+            model = ModelInit(path_checkpoint=temp_file.name)
+            return model
+
+        finally:
+            # Clean up the temporary file
+            os.unlink(temp_file.name)
 
 
 def process_image(image, side, email, model, database):
@@ -84,8 +97,8 @@ def process_image(image, side, email, model, database):
             predictions = [tensor.tolist() for tensor in predictions]
 
             st.write(f"{side.capitalize()} image predictions:")
-            st.write(f"{side.capitalize()} severity score:", predictions[0][0])
-            st.write(f"{side.capitalize()} number of blemishes:", predictions[1][0])
+            st.write(f"{side.capitalize()} clarity score: ",str(100 - 25*(predictions[0][0])).strip(), "%")
+            st.write(f"{side.capitalize()} number of blemishes:", str(predictions[1][0]))
 
             if email:
                 save_prediction(database, email, side, predictions, img_url)
@@ -110,8 +123,8 @@ def main():
     front_image = st.file_uploader("Upload front image", type=["jpg", "jpeg", "png"])
 
     if left_image or right_image or front_image:
+        database = init_firebase()
         model = load_model()
-        database = init_firebase() if email else None
 
         if left_image and right_image:
             process_image(left_image, "left", email, model, database)

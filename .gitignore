@@ -29,3 +29,5 @@ __pycache__/
 # Ignore large files and directories
 *.so
 *.bin
+
+lds-weights/
