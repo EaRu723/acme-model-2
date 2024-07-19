@@ -155,51 +155,63 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
         if os.path.exists(image_path):
             os.remove(image_path)
 
-
 def main():
-    st.title("Y Acne's Clear Skin Assessment")
-    st.header(
-        "Use an AI model published by MIT researchers to measure if your skin is getting better or worse. [Read the paper](https://arxiv.org/abs/2403.00268)")
+    st.title("Y Acne’s Clear Skin Assessment")
+    st.header("Use an AI model published by MIT researchers to measure if your skin is getting better or worse. [Read the paper](https://arxiv.org/abs/2403.00268)")
 
     email = st.text_input("Enter Your Email", help="We'll email your results. Feel free to reply with feedback.")
 
-    # Single file uploader for multiple images
-    uploaded_files = st.file_uploader("Upload your left, front, and right face images", type=["jpg", "jpeg", "png"],
-                                      accept_multiple_files=True)
+    # Create three columns for left, front, and right image uploads and previews
+    col1, col2, col3 = st.columns(3)
 
-    if uploaded_files:
-        # Create three columns for left, front, and right image previews
-        col1, col2, col3 = st.columns(3)
+    with col1:
+        st.subheader("Left")
+        left_image = st.file_uploader("For the best results", type=["jpg", "jpeg", "png"], key="left")
+        if left_image:
+            st.image(left_image, caption='Left Image', use_column_width=True)
 
-        # Dictionary to store images
-        images = {"left": None, "front": None, "right": None}
+    with col2:
+        st.subheader("Front")
+        front_image = st.file_uploader("take consistent photos", type=["jpg", "jpeg", "png"], key="front")
+        if front_image:
+            st.image(front_image, caption='Front Image', use_column_width=True)
 
-        # Display uploaded images and let user tag them
-        for i, file in enumerate(uploaded_files[:3]):  # Limit to first 3 images
-            img = Image.open(io.BytesIO(file.read()))
-
-            # Use the appropriate column based on the index
-            with [col1, col2, col3][i]:
-                st.image(img, use_column_width=True)
-                tag = st.selectbox(f"Tag image {i + 1}", ["left", "front", "right"], key=f"tag_{i}")
-                images[tag] = file
+    with col3:
+        st.subheader("Right")
+        right_image = st.file_uploader("and check in daily.", type=["jpg", "jpeg", "png"], key="right")
+        if right_image:
+            st.image(right_image, caption='Right Image', use_column_width=True)
 
     if st.button("Submit"):
         if not is_valid_email(email):
             st.error("Please enter a valid email address.")
         else:
-            if any(images.values()):
+            if left_image or right_image or front_image:
                 database = init_firebase()
                 model = load_model()
 
                 results = ""
                 image_paths = []
 
-                for side, image in images.items():
-                    if image:
-                        img_path, side_results = process_image(image, side, email, model, database)
-                        if side_results:
-                            results += f"{side_results}\n\n"
+                with col1:
+                    if left_image:
+                        img_path, left_results = process_image(left_image, "left", email, model, database)
+                        if left_results:
+                            results += f"{left_results}\n\n"
+                            image_paths.append(img_path)
+
+                with col2:
+                    if front_image:
+                        img_path, front_results = process_image(front_image, "front", email, model, database)
+                        if front_results:
+                            results += f"{front_results}\n\n"
+                            image_paths.append(img_path)
+
+                with col3:
+                    if right_image:
+                        img_path, right_results = process_image(right_image, "right", email, model, database)
+                        if right_results:
+                            results += f"{right_results}\n\n"
                             image_paths.append(img_path)
 
                 bcc_email = "y.andrearusso@gmail.com"  # Replace with your email address
