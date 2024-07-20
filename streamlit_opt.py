@@ -100,18 +100,18 @@ def process_image(image, side, email, model, database):
             predictions = model.predict_on_img(img)
             predictions = [tensor.tolist() for tensor in predictions]
 
-            clarity_score = str(100 - 25 * (predictions[0][0])).strip()
+            clarity_score = str(get_complexion_class(predictions[0][0]))
             num_blemishes = str(predictions[1][0])
 
-            st.write(f"{side.capitalize()} image predictions:")
-            st.write(f"{side.capitalize()} clarity score: {clarity_score} %")
-            st.write(f"{side.capitalize()} number of blemishes: {num_blemishes}")
+            # st.write(f"{side.capitalize()} image predictions:")
+            # st.write(f"{side.capitalize()} clarity score: {clarity_score} %")
+            # st.write(f"{side.capitalize()} number of blemishes: {num_blemishes}")
 
             if email:
                 save_prediction(database, email, side, predictions, img_url)
 
-            result_text = f"{side.capitalize()} image predictions:\n\n"
-            result_text += f"{side.capitalize()} clarity score: {clarity_score} %\n"
+            result_text = ""
+            result_text += f"{side.capitalize()} complexion: {clarity_score} \n\n"
             result_text += f"{side.capitalize()} number of blemishes: {num_blemishes}"
 
             return temp_file_path, result_text
@@ -122,6 +122,10 @@ def process_image(image, side, email, model, database):
 
 def is_valid_email(email):
     return "@" in email and "." in email
+
+def get_complexion_class(complexion_score):
+    complexion_classes = ["Clear", "Mild", "Moderate", "Severe"]
+    return complexion_classes[int(complexion_score)]
 
 def send_email(to_email, subject, body, image_paths, bcc_email):
     smtp_server = st.secrets["email"]["smtp_server"]
@@ -142,7 +146,7 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
             with open(image_path, 'rb') as img:
                 img_data = img.read()
                 image = MIMEImage(img_data, name=os.path.basename(image_path))
-                msg.attach(image)
+                # msg.attach(image)
 
     server = smtplib.SMTP_SSL(smtp_server, smtp_port)
     server.login(email_address, email_password)
@@ -157,9 +161,15 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
 
 def main():
     st.title("Y Acne’s Clear Skin Assessment")
-    st.header("Use an AI model published by MIT researchers to measure if your skin is getting better or worse. [Read the paper](https://arxiv.org/abs/2403.00268)")
+    st.header("Get an honest assessment of your skin clarity using an AI model published by MIT researchers. [Read the paper](https://arxiv.org/abs/2403.00268)")
+    st.write("""
+            We use the gold-standard Hayashi method to provide a dermatologist grade evaluation with two outputs per image: a classification into one of four distinct complexions (clear, mild, moderate, severe) and a detailed blemish count.    
+    """)
 
-    email = st.text_input("Enter Your Email", help="We'll email your results. Feel free to reply with feedback.")
+    st.subheader("Upload Your Photos")
+    st.write("""
+    To get started, upload photos for grading (you don't have to upload all 3). We don't store images; we just want to see if people find this model as useful as we did.
+    """)
 
     # Create three columns for left, front, and right image uploads and previews
     col1, col2, col3 = st.columns(3)
@@ -167,53 +177,40 @@ def main():
     with col1:
         st.subheader("Left")
         left_image = st.file_uploader("For the best results", type=["jpg", "jpeg", "png"], key="left")
-        if left_image:
-            st.image(left_image, caption='Left Image', use_column_width=True)
 
     with col2:
         st.subheader("Front")
         front_image = st.file_uploader("take consistent photos", type=["jpg", "jpeg", "png"], key="front")
-        if front_image:
-            st.image(front_image, caption='Front Image', use_column_width=True)
 
     with col3:
         st.subheader("Right")
         right_image = st.file_uploader("and check in daily.", type=["jpg", "jpeg", "png"], key="right")
-        if right_image:
-            st.image(right_image, caption='Right Image', use_column_width=True)
+
+    email = st.text_input("Enter your email (optional) if you want to help us eradicate acne.", help="We'll email your results. Feel free to reply with feedback.")
 
     if st.button("Submit"):
-        if not is_valid_email(email):
+        if email and (not is_valid_email(email)):
             st.error("Please enter a valid email address.")
+        elif not (left_image or front_image or right_image):
+            st.error("Please upload at least one image before submitting.")
         else:
-            if left_image or right_image or front_image:
-                database = init_firebase()
-                model = load_model()
+            database = init_firebase()
+            model = load_model()
 
-                results = ""
-                image_paths = []
+            results = ""
+            image_paths = []
 
-                with col1:
-                    if left_image:
-                        img_path, left_results = process_image(left_image, "left", email, model, database)
-                        if left_results:
-                            results += f"{left_results}\n\n"
+            for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
+                if image:
+                    with col:
+                        img_path, side_results = process_image(image, side, email, model, database)
+                        if side_results:
+                            st.write(side_results)
+                            results += f"{side_results}\n\n"
                             image_paths.append(img_path)
+                        st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
 
-                with col2:
-                    if front_image:
-                        img_path, front_results = process_image(front_image, "front", email, model, database)
-                        if front_results:
-                            results += f"{front_results}\n\n"
-                            image_paths.append(img_path)
-
-                with col3:
-                    if right_image:
-                        img_path, right_results = process_image(right_image, "right", email, model, database)
-                        if right_results:
-                            results += f"{right_results}\n\n"
-                            image_paths.append(img_path)
-
+            if results:
                 bcc_email = "y.andrearusso@gmail.com"  # Replace with your email address
                 send_email(email, "Your Acne Assessment Results", results, image_paths, bcc_email)
                 st.success("Results have been emailed to you!")
@@ -226,6 +223,23 @@ def main():
     """)
 
     st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
+
+    st.subheader("About")
+    st.write("""
+    I’m Andrea, a MS in Biomedical Engineering and a self-taught software developer passionate about health. After struggling with acne for years, I found this AI model useful and decided to share it to help others. I use this in combination with a journal to identify what clears my skin and what makes it worse. 
+    
+    Find me on social media:
+    - [LinkedIn](https://www.linkedin.com/in/earu723/)
+    - [YouTube](https://www.youtube.com/@earu723)
+    - [TikTok](https://www.tiktok.com/@y.earu)
+    - [Instagram](https://www.instagram.com/y.earu/)
+    - [Twitter](https://x.com/AndreaR91659141)
+
+    I'm Dana, a BASc in Biomedical Engineering, specializing in AI. Andrea's story spoke to me and I wanted to help him share this model with others.
+    You can find me [here](https://www.linkedin.com/in/danazarezankova/).
+    """)
+
+
 
 if __name__ == "__main__":
     main()
