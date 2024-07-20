@@ -78,7 +78,7 @@ def save_image(user_email, side, _img, img_name):
     finally:
         os.remove(temp_file_path)
 
-    return f"gs://{st.secrets['firebase']['storageBucket']}/webApp/{user}/{img_name}"
+    return f"gs://{st.secrets['storageBucket']}/webApp/{user}/{img_name}"
 
 def process_image(image, side, email, model, database):
     if image:
@@ -159,6 +159,22 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
         if os.path.exists(image_path):
             os.remove(image_path)
 
+def page_visit_update(db, user_email=None):
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    visits_ref = db.collection("webAppAnalytics").document('visits')
+    today_visits = visits_ref.collection('dates').document(today)
+    if not today_visits.get():
+        today_visits.add({
+        'visits': 1,
+        'visitors': [user_email] if user_email else []
+        })
+    else:
+        today_visits.update({
+            'visits': firestore.Increment(1),
+            'visitors': firestore.ArrayUnion([user_email])
+            })
+
+
 def main():
     st.title("Y Acne’s Clear Skin Assessment")
     st.header("Get an honest assessment of your skin clarity using an AI model published by MIT researchers. [Read the paper](https://arxiv.org/abs/2403.00268)")
@@ -196,6 +212,8 @@ def main():
 
             results = ""
             image_paths = []
+
+            page_visit_update(database, email)
 
             for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
                 if image:
