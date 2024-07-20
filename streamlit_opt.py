@@ -162,13 +162,10 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
 def main():
     st.title("Y Acne’s Clear Skin Assessment")
     st.header("Get an honest assessment of your skin clarity using an AI model published by MIT researchers. [Read the paper](https://arxiv.org/abs/2403.00268)")
-    st.write("""
-            We use the gold-standard Hayashi method to provide a dermatologist grade evaluation with two outputs per image: a classification into one of four distinct complexions (clear, mild, moderate, severe) and a detailed blemish count.    
-    """)
 
-    st.subheader("Upload Your Photos")
+    st.subheader("Upload Photo(s)")
     st.write("""
-    To get started, upload photos for grading (you don't have to upload all 3). We don't store images; we just want to see if people find this model as useful as we did.
+    We don't store images; we just want to see if people find this model as useful as we did.
     """)
 
     # Create three columns for left, front, and right image uploads and previews
@@ -225,6 +222,10 @@ def main():
     st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
 
     st.subheader("About")
+    st.write("""
+            We use the gold-standard Hayashi method to provide a dermatologist grade evaluation with two outputs per image: a classification into one of four distinct complexions (clear, mild, moderate, severe) and a detailed blemish count.    
+    """)
+
     st.write("""
     I’m Andrea, a MS in Biomedical Engineering and a self-taught software developer passionate about health. After struggling with acne for years, I found this AI model useful and decided to share it to help others. I use this in combination with a journal to identify what clears my skin and what makes it worse. 
     
