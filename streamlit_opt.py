@@ -159,23 +159,48 @@ def send_email(to_email, subject, body, image_paths, bcc_email):
         if os.path.exists(image_path):
             os.remove(image_path)
 
-def page_visit_update(db, user_email=None):
+def initialize_session_state():
+    if 'visit_recorded' not in st.session_state:
+        st.session_state.visit_recorded = False
+def page_visit_update(db):
+    if not st.session_state.visit_recorded:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        visits_ref = db.collection("webAppAnalytics").document('visits')
+        today_visits = visits_ref.collection('dates').document(today)
+        if not today_visits.get():
+            today_visits.add({
+            'visits': 1,
+            })
+        else:
+            today_visits.update({
+                'visits': firestore.Increment(1),
+            })
+        st.session_state.visit_recorded = True
+
+def user_submit_update(db, user_email=None):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     visits_ref = db.collection("webAppAnalytics").document('visits')
     today_visits = visits_ref.collection('dates').document(today)
     if not today_visits.get():
         today_visits.add({
-        'visits': 1,
-        'visitors': [user_email] if user_email else []
+        'visitors': user_email,
         })
     else:
         today_visits.update({
-            'visits': firestore.Increment(1),
-            'visitors': firestore.ArrayUnion([user_email])
-            })
+            'visitors': firestore.ArrayUnion([user_email]),
+        })
 
+def all_users(db, user_email):
+    all_users_ref = db.collection("webAppAnalytics").document('all_visitors')
+    all_users_ref.update({
+        'users': firestore.ArrayUnion([user_email]),
+    })
 
 def main():
+    initialize_session_state()
+    database = init_firebase()
+    page_visit_update(database)
+
     st.title("Y Acne’s Clear Skin Assessment")
     st.header("Get an honest assessment of your skin clarity using an AI model published by MIT researchers. [Read the paper](https://arxiv.org/abs/2403.00268)")
 
@@ -201,19 +226,21 @@ def main():
 
     email = st.text_input("Enter your email (optional) if you want to help us eradicate acne.", help="We'll email your results. Feel free to reply with feedback.")
 
+
+
     if st.button("Submit"):
         if email and (not is_valid_email(email)):
             st.error("Please enter a valid email address.")
         elif not (left_image or front_image or right_image):
             st.error("Please upload at least one image before submitting.")
         else:
-            database = init_firebase()
+            # database = init_firebase()
             model = load_model()
-
+            if email:
+                user_submit_update(database, email)
+                all_users(database, email)
             results = ""
             image_paths = []
-
-            page_visit_update(database, email)
 
             for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
                 if image:
