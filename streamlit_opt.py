@@ -167,15 +167,25 @@ def page_visit_update(db):
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         visits_ref = db.collection("webAppAnalytics").document('visits')
         today_visits = visits_ref.collection('dates').document(today)
-        if not today_visits.get():
-            today_visits.add({
-            'visits': 1,
-            })
-        else:
-            today_visits.update({
-                'visits': firestore.Increment(1),
-            })
-        st.session_state.visit_recorded = True
+        try:
+            # Try to get the document
+            doc = today_visits.get()
+            if not doc.exists:
+                # If the document doesn't exist, create it with an initial visit count of 1
+                today_visits.set({
+                    'visits': 1
+                })
+            else:
+                # If the document exists, increment the visit count
+                today_visits.update({
+                    'visits': firestore.Increment(1)
+                })
+            st.session_state.visit_recorded = True
+
+        except Exception as e:
+            logger.error(f"Error updating page visit: {str(e)}")
+            st.error(f"An error occurred while updating visit count. Please try again later.")
+
 
 def user_submit_update(db, user_email=None):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
