@@ -211,32 +211,36 @@ def main():
     database = init_firebase()
     page_visit_update(database)
 
-    st.title("Y Acne’s Clear Skin Assessment")
-    st.header("Get an honest assessment of your skin clarity using an AI model published by MIT researchers. [Read the paper](https://arxiv.org/abs/2403.00268)")
+    st.title("Clear Your Skin")
+    st.write("find what works for ***you***")
 
-    st.subheader("Upload Photo(s)")
+    st.subheader("How?")
     st.write("""
-    We don't store images; we just want to see if people find this model as useful as we did.
+    **Track:** Log your skincare, diet, and lifestyle habits  
+    **Evaluate:** Use our state-of-the-art AI to objectively measure progress  
+    **Iterate:** Receive personalized recommendations on what works and what doesn't
     """)
 
-    # Create three columns for left, front, and right image uploads and previews
+    st.subheader("Clear Skin Starts Here:")
+    st.write("**Upload photo(s)**: Show us your starting point")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.subheader("Left")
-        left_image = st.file_uploader("For the best results", type=["jpg", "jpeg", "png"], key="left")
+        left_image = st.file_uploader("", type=["jpg", "jpeg", "png"], key="left")
 
     with col2:
         st.subheader("Front")
-        front_image = st.file_uploader("take consistent photos", type=["jpg", "jpeg", "png"], key="front")
+        front_image = st.file_uploader("", type=["jpg", "jpeg", "png"], key="front")
 
     with col3:
         st.subheader("Right")
-        right_image = st.file_uploader("and check in daily.", type=["jpg", "jpeg", "png"], key="right")
+        right_image = st.file_uploader("", type=["jpg", "jpeg", "png"], key="right")
 
-    email = st.text_input("Enter your email (optional) if you want to help us eradicate acne.", help="We'll email your results. Feel free to reply with feedback.")
+    routine = st.text_area("**Describe your routine**: products, frequency of use, diet, and any other relevant details", help="If you don't have a routine we have a great one below.")
 
-
+    email = st.text_input("**Enter your email**: (optional) get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
 
     if st.button("Submit"):
         if email and (not is_valid_email(email)):
@@ -244,7 +248,6 @@ def main():
         elif not (left_image or front_image or right_image):
             st.error("Please upload at least one image before submitting.")
         else:
-            # database = init_firebase()
             model = load_model()
             if email:
                 user_submit_update(database, email)
@@ -267,22 +270,16 @@ def main():
                 send_email(email, "Your Acne Assessment Results", results, image_paths, bcc_email)
                 st.success("Results have been emailed to you!")
 
-    st.header("Coming Soon…")
-    st.write("""
-    - Personalized Progress Reports
-    - Exclusive Acne-Clearing Tips
-    - Supportive Community Access
-    """)
-
-    st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
 
     st.subheader("About")
     st.write("""
             We use the gold-standard Hayashi method to provide a dermatologist grade evaluation with two outputs per image: a classification into one of four distinct complexions (clear, mild, moderate, severe) and a detailed blemish count.    
     """)
+    st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
 
+    st.subheader("Who We Are")
     st.write("""
-    I’m Andrea, a MS in Biomedical Engineering and a self-taught software developer passionate about health. After struggling with acne for years, I found this AI model useful and decided to share it to help others. I use this in combination with a journal to identify what clears my skin and what makes it worse. 
+    I’m Andrea, a MS in Biomedical Engineering and a self-taught software developer passionate about health. After struggling with acne for years, I found this AI model and used it to clear my skin.I'm sharing what's worked for me in the hopes of helping others.
     
     Find me on social media:
     - [LinkedIn](https://www.linkedin.com/in/earu723/)
@@ -295,7 +292,32 @@ def main():
     You can find me [here](https://www.linkedin.com/in/danazarezankova/).
     """)
 
+    st.subheader("References / Information:")
+    st.write("""
+    If you don't have a routine, here is an example you can follow:
 
+    **Morning Wash:**
+    - Salycilic Acid
+
+    **Evening Wash:**
+    - Wash with Salycilic Acid and then Benzoyl Peroxide (2.5%)
+    
+    **Diet and Lifestyle:**
+    (baby steps. take small manageable steps)
+    - Drink plenty of water.
+    - Eat as much as you can: fruits, vegetables, and lean proteins.
+    - Eat as little as you can: sugar, simple carbs, processed foods, seed oils.
+    - Get at least 7-8 hours of sleep every night.
+    - Exercise regularly to maintain overall health.
+    - Practice meditation to reduce stress.
+    """)
+
+    st.header("Coming Soon…")
+    st.write("""
+    - Personalized Progress Reports
+    - Supportive Community Access
+    - iOS App
+    """)
 
 if __name__ == "__main__":
     main()
