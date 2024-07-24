@@ -48,10 +48,9 @@ def load_model():
         finally:
             os.unlink(temp_file.name)
 
-@st.cache_data
-def save_prediction(_db, user_email, side, scores, img_url):
+def save_prediction(db, user_email, side, scores, img_url):
     user = user_email.replace("@", "_").replace(".", "_")
-    user_doc_ref = _db.collection("webApp").document(user)
+    user_doc_ref = db.collection("webApp").document(user)
     predictions_col_ref = user_doc_ref.collection("predictions")
     predictions_col_ref.add({
         'side': side,
@@ -82,6 +81,7 @@ def save_image(user_email, side, _img, img_name):
 
 def process_image(image, side, email, model, database):
     if image:
+        user_submit_update(database, email)
         try:
             img = Image.open(io.BytesIO(image.read()))
             img.load()
@@ -94,11 +94,13 @@ def process_image(image, side, email, model, database):
                 img.save(temp_file.name, optimize=True, quality=85)
                 temp_file_path = temp_file.name
 
-            if email:
-                img_url = save_image(email, side, img, image.name)
-
             predictions = model.predict_on_img(img)
             predictions = [tensor.tolist() for tensor in predictions]
+
+            if email:
+                img_url = save_image(email, side, img, image.name)
+                save_prediction(database, email, side, predictions, img_url)
+
 
             clarity_score = str(get_complexion_class(predictions[0][0]))
             num_blemishes = str(predictions[1][0])
@@ -107,12 +109,10 @@ def process_image(image, side, email, model, database):
             # st.write(f"{side.capitalize()} clarity score: {clarity_score} %")
             # st.write(f"{side.capitalize()} number of blemishes: {num_blemishes}")
 
-            if email:
-                save_prediction(database, email, side, predictions, img_url)
-
             result_text = ""
             result_text += f"{side.capitalize()} complexion: {clarity_score} \n\n"
             result_text += f"{side.capitalize()} number of blemishes: {num_blemishes}"
+
 
             return temp_file_path, result_text
         except Exception as e:
@@ -206,6 +206,15 @@ def all_users(db, user_email):
         'users': firestore.ArrayUnion([user_email]),
     })
 
+def store_routine(_db, routine, user_email):
+    user = user_email.replace("@", "_").replace(".", "_")
+    user_doc_ref = _db.collection("webApp").document(user)
+    predictions_col_ref = user_doc_ref.collection("routines")
+    predictions_col_ref.add({
+        'routine': routine
+    })
+
+
 def main():
     initialize_session_state()
     database = init_firebase()
@@ -249,11 +258,11 @@ def main():
             st.error("Please upload at least one image before submitting.")
         else:
             model = load_model()
-            if email:
-                user_submit_update(database, email)
-                all_users(database, email)
+            all_users(database, email)
             results = ""
             image_paths = []
+            if email:
+                store_routine(database, routine, email)
 
             for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
                 if image:
@@ -262,6 +271,7 @@ def main():
                         if side_results:
                             st.write(side_results)
                             results += f"{side_results}\n\n"
+
                             image_paths.append(img_path)
                         st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
 
@@ -297,10 +307,10 @@ def main():
     If you don't have a routine, here is an example you can follow:
 
     **Morning Wash:**
-    - Salycilic Acid
+    - Salicylic Acid
 
     **Evening Wash:**
-    - Wash with Salycilic Acid and then Benzoyl Peroxide (2.5%)
+    - Wash with Salicylic Acid and then Benzoyl Peroxide (2.5%)
     
     **Diet and Lifestyle:**
     (baby steps. take small manageable steps)
