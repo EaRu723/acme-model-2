@@ -225,10 +225,7 @@ def store_routine(_db, routine, user_email):
     })
 
 # Define the path to the images
-image_directory = "/Users/andrea/Documents/Streamlit/acme-model-2/images"
-
-# List of image file names
-image_files = ["IMG_1008.jpeg"]
+image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/IMG_1008.jpeg?alt=media&token=0d73d2d2-3f41-4343-b367-c89d0cce8c70"
 
 
 
@@ -322,9 +319,8 @@ def main():
     - [Twitter](https://x.com/AndreaR91659141)
     """)
     
-    for image_file in image_files:
-        image_path = os.path.join(image_directory, image_file)
-        st.image(image_path, caption=os.path.splitext("me as a 4th year BME student")[0], use_column_width=True)
+    st.image(image_url, caption='Me as a 4th year BME student', use_column_width=True)
+
 
     st.write("""
     I'm Dana, a BASc in Biomedical Engineering, specializing in AI. Andrea's story spoke to me and I wanted to help him share this model with others.
