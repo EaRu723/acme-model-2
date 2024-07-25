@@ -302,7 +302,7 @@ def main():
 
     st.subheader("About")
     st.write("""
-            The goal is to make sel-experimentation collaborative. By working together we can learn what works and what doesn't and put acne behind us for good.    
+            The goal is to make self-experimentation collaborative. By working together we can learn what works and what doesn't and put acne behind us for good.    
     """)
     st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
 
