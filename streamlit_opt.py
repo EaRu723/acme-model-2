@@ -160,20 +160,19 @@ def initialize_session_state():
         st.session_state.visit_recorded = False
 
 def page_visit_update(db):
-    if not st.session_state.visit_recorded:
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        visits_ref = db.collection("webAppAnalytics").document('visits')
-        today_visits = visits_ref.collection('dates').document(today)
-        try:
-            doc = today_visits.get()
-            if not doc.exists:
-                today_visits.set({'visits': 1})
-            else:
-                today_visits.update({'visits': firestore.Increment(1)})
-            st.session_state.visit_recorded = True
-        except Exception as e:
-            logger.error(f"Error updating page visit: {str(e)}")
-            st.error(f"An error occurred while updating visit count. Please try again later.")
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    visits_ref = db.collection("webAppAnalytics").document('visits')
+    today_visits = visits_ref.collection('dates').document(today)
+    try:
+        doc = today_visits.get()
+        if not doc.exists:
+            today_visits.set({'visits': 1, 'photoSubmissions': 0})
+        else:
+            today_visits.update({'visits': firestore.Increment(1)})
+        st.session_state.visit_recorded = True
+    except Exception as e:
+        logger.error(f"Error updating page visit: {str(e)}")
+        st.error(f"An error occurred while updating visit count. Please try again later.")
 
 def user_submit_update(db, user_email=None):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -200,6 +199,17 @@ def store_routine(_db, routine, user_email):
         'date': datetime.datetime.now()
     })
 
+def track_photo_submission(db):
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    visits_ref = db.collection("webAppAnalytics").document('visits')
+    today_visits = visits_ref.collection('dates').document(today)
+    try:
+        today_visits.update({'photoSubmissions': firestore.Increment(1)})
+    except Exception as e:
+        logger.error(f"Error updating photo submission count: {str(e)}")
+        st.error(f"An error occurred while updating submission count. Please try again later.")
+
+
 image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/IMG_1008.jpeg?alt=media&token=0d73d2d2-3f41-4343-b367-c89d0cce8c70"
 
 # Function to determine the message and emoji
@@ -220,136 +230,138 @@ def main():
     database = init_firebase()
     page_visit_update(database)
 
-    # Initialize the modal state
+    # Initialize the modal state and visibility state
     st.session_state["show_modal"] = False
+    if "show_upload_section" not in st.session_state:
+        st.session_state["show_upload_section"] = False
 
-    st.title("Is Your Acne Improving?")
-    st.subheader("Hi 👋 I'm Andrea, and I'm crowdsourcing the cure to acne.")
-    st.write("""
-    I've struggled with acne for years and though there are many "solutions" on the market, none have worked for me. 
-    I know this is a common experience, so I decided to tackle this problem myself. That's why I created this free tool, which uses AI to honestly assess
-    if your skin is improving.
-    It's based on the gold-standard [Hayashi scale](https://pubmed.ncbi.nlm.nih.gov/18477223/) and a [model](https://arxiv.org/abs/2403.00268) developed by researchers at MIT. **Try it out!**
-    """)
+    st.title("Take Control of Your Acne 💪")
+    st.subheader("Use AI to clear your skin.")
 
-    modal = Modal(key="result_modal", title="Results")
+    # Button to toggle the upload section
+    if st.button("Get Your Free Evaluation"):
+        st.session_state["show_upload_section"] = True
 
-    col1, col2, col3 = st.columns(3)
+    # Conditionally show the image upload section based on the button click
+    if st.session_state["show_upload_section"]:
+        modal = Modal(key="result_modal", title="Results")
 
-    with col1:
-        st.subheader("Left")
-        left_image = st.file_uploader("(photo upload)", key="left")
+        col1, col2, col3 = st.columns(3)
 
-    with col2:
-        st.subheader("Front")
-        front_image = st.file_uploader("(photo upload)", key="front")
+        with col1:
+            st.subheader("Left")
+            left_image = st.file_uploader("upload clear photos of your acne", key="left")
 
-    with col3:
-        st.subheader("Right")
-        right_image = st.file_uploader("(photo upload)", key="right")
+        with col2:
+            st.subheader("Front")
+            front_image = st.file_uploader("to be graded by the AI", key="front")
 
-    email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
+        with col3:
+            st.subheader("Right")
+            right_image = st.file_uploader("(we delete all photos within 24 hours)", key="right")
 
-    if st.button("Submit"):
-        if email and (not is_valid_email(email)):
-            st.error("Please enter a valid email address.")
-        elif not (left_image or front_image or right_image):
-            st.error("Please upload at least one image before submitting.")
-        else:
-            model = load_model()
-            all_users(database, email)
-            image_paths = []
-            severity_labels = []
-            num_blemishes_list = []
+        email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
 
-            for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
-                if image:
-                    with col:
-                        img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
-                        if severity_label and num_blemishes is not None:
-                            st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
-                            st.write(f"**Severity:** {severity_label}")
-                            st.write(f"**Number of Blemishes:** {num_blemishes}")
-                            severity_labels.append(severity_label)
-                            num_blemishes_list.append(num_blemishes)
-                            image_paths.append(img_path)
+        if st.button("Submit"):
+            if email and (not is_valid_email(email)):
+                st.error("Please enter a valid email address.")
+            elif not (left_image or front_image or right_image):
+                st.error("Please upload at least one image before submitting.")
+            else:
+                model = load_model()
+                all_users(database, email)
+                track_photo_submission(database)  # Add this line
+                image_paths = []
+                severity_labels = []
+                num_blemishes_list = []
 
-                            # Store scores in session state
-                            st.session_state[f"{side}_classification"] = severity_label
-                            st.session_state[f"{side}_score"] = num_blemishes
+                for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
+                    if image:
+                        with col:
+                            img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
+                            if severity_label and num_blemishes is not None:
+                                st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
+                                st.write(f"**Severity:** {severity_label}")
+                                st.write(f"**Number of Blemishes:** {num_blemishes}")
+                                severity_labels.append(severity_label)
+                                num_blemishes_list.append(num_blemishes)
+                                image_paths.append(img_path)
 
-            if severity_labels and num_blemishes_list:
-                overall_severity = max(severity_labels, key=severity_labels.count)  # Most frequent label
-                total_blemishes = sum(num_blemishes_list)
-                message = get_message_and_emoji(overall_severity)
+                                # Store scores in session state
+                                st.session_state[f"{side}_classification"] = severity_label
+                                st.session_state[f"{side}_score"] = num_blemishes
 
-                summary_message = f"""
-                **Overall Severity:** {overall_severity}
-                **Total Number of Blemishes:** {total_blemishes}
+                if severity_labels and num_blemishes_list:
+                    overall_severity = max(severity_labels, key=severity_labels.count)  # Most frequent label
+                    total_blemishes = sum(num_blemishes_list)
+                    message = get_message_and_emoji(overall_severity)
 
-                {message}
-                """
+                    summary_message = f"""
+                    **Overall Severity:** {overall_severity}  
+                    **Total Number of Blemishes:** {total_blemishes}
 
-                st.session_state["results_message"] = summary_message
-                st.session_state["show_modal"] = True  # Set flag to show modal
+                    {message}
+                    """
 
-            if email:
-                email_subject = "Your Acne Assessment Results"
-                email_body = f"Dear user,\n\nThank you for using our acne assessment tool. Here are your personalized results:\n\n{summary_message}\n\nBest regards,\nThe Team"
-                send_email(to_email=email, subject=email_subject, body=email_body, image_paths=image_paths, bcc_email=st.secrets["email"]["bcc_email"])
+                    st.session_state["results_message"] = summary_message
+                    st.session_state["show_modal"] = True  # Set flag to show modal
 
-    # Check the modal state and display the modal if needed
-    if st.session_state.get("show_modal", False):
-        with modal.container():
-            st.markdown(st.session_state["results_message"])
-            # Display separate classifications and scores for each side
-            st.markdown("### Detailed Scores:")
-            if 'left_classification' in st.session_state and 'left_score' in st.session_state:
+                if email:
+                    email_subject = "Your Acne Assessment Results"
+                    email_body = f"Dear user,\n\nThank you for using our acne assessment tool. Here are your personalized results:\n\n{summary_message}\n\nBest regards,\nThe Team"
+                    send_email(to_email=email, subject=email_subject, body=email_body, image_paths=image_paths, bcc_email=st.secrets["email"]["bcc_email"])
+
+        # Modal handling
+        if st.session_state.get("show_modal", False):
+            with modal.container():
+                st.markdown(st.session_state["results_message"])
+                # Display separate classifications and scores for each side
+                st.markdown("### Detailed Scores:")
+                if 'left_classification' in st.session_state and 'left_score' in st.session_state:
                     st.markdown(f"**Left Side:** {st.session_state['left_classification']} ({st.session_state['left_score']} blemishes)")
-            if 'front_classification' in st.session_state and 'front_score' in st.session_state:
+                if 'front_classification' in st.session_state and 'front_score' in st.session_state:
                     st.markdown(f"**Front/Center Side:** {st.session_state['front_classification']} ({st.session_state['front_score']} blemishes)")
-            if 'right_classification' in st.session_state and 'right_score' in st.session_state:
+                if 'right_classification' in st.session_state and 'right_score' in st.session_state:
                     st.markdown(f"**Right Side:** {st.session_state['right_classification']} ({st.session_state['right_score']} blemishes)")
 
-        if st.button("Close"):
-            st.session_state["show_modal"] = False  # Close the modal
+            if st.button("Close"):
+                st.session_state["show_modal"] = False  # Close the modal
+
+    st.subheader("Hi, I'm Andrea 👋")
+    st.write("""
+After years of struggling with acne, I developed a tool to track and improve my skin. Now, I’m sharing it to help you find what works for you.    """)
+    # Add before and after images
+    before_image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/users%2F4WWZhb92MKMMjciIIYlr92cr1UM2%2Fentries%2F20240529%2Fimages%2F67283BDC-2C31-4D0A-BA18-2F167E05629E?alt=media&token=a8ca1ded-575a-4e77-94b6-a99b76496a32"
+    after_image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/users%2F4WWZhb92MKMMjciIIYlr92cr1UM2%2Fentries%2F20240728%2Fimages%2FEEFD7102-B92F-439C-A175-570BEB8F4938?alt=media&token=bdcfd61b-13f7-4f0d-bfb5-25e11affc9e4"
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.image(before_image_url, caption="Before (May 29)", width = 300)
+
+    with col2:
+        st.image(after_image_url, caption="After (Jul 28)", width = 300)
+
+    st.subheader("Why I Made This")
+    st.write("""
+    After years of struggling with acne and trying countless products, I realized that tracking what worked was key to seeing real improvement. I found a [model](https://arxiv.org/abs/2403.00268) uses the gold-standard [Hayashi scale](https://pubmed.ncbi.nlm.nih.gov/18477223/) developed by researchers at MIT. My hope is that by sharing this with others, we can collectively find solutions that work.
+
+    I have nothing to sell; my goal is to genuinely help others on their journey to clearer skin. If this tool gains traction and proves helpful, we could potentially crowdsource the cure for acne together. Your feedback and experiences are invaluable in this process.
+
+    If you have any questions or need support, feel free to reach out to us at team@yacne.com.
+    """)     
 
     st.header("Coming Soon…")
     st.write("""
     - Personalized Progress Reports
-    - Protocol assessment
+    - Protocol Assessment
     - Supportive Community Access
     - iOS App
     """)
 
-    st.subheader("About")
-    st.write("""
-    The goal is to make self-experimentation collaborative. By working together we can learn what works and what doesn't and put acne behind us for good.    
-    """)
-    st.write("If you have any questions or need support, feel free to reach out to us at [team@yacne.com](mailto:team@yacne.com).")
-
-    st.subheader("Who We Are")
-    st.write("""
-    I’m Andrea, a MS in Biomedical Engineering and a self-taught software developer who is passionate about health. After struggling with acne for years, I found this AI model and used it to clear my skin.I'm sharing what's worked for me in the hopes of helping others.
-    
-    Find me on social media:
-    - [LinkedIn](https://www.linkedin.com/in/earu723/)
-    - [YouTube](https://www.youtube.com/@earu723)
-    - [TikTok](https://www.tiktok.com/@y.earu)
-    - [Instagram](https://www.instagram.com/y.earu/)
-    - [Twitter](https://x.com/AndreaR91659141)
-    """)
-
-    st.image(image_url, caption='Me as a 4th year BME student', use_column_width=True)
-
-    st.write("""
-    I'm Dana, a BASc in Biomedical Engineering, specializing in AI. Andrea's story spoke to me and I wanted to help him share this model with others.
-    You can find me [here](https://www.linkedin.com/in/danazarezankova/).
-    """)
-
     st.subheader("References / Information:")
     st.write("""
-    If you don't have a routine, here is an example you can follow:
+    If you don't have a routine, here is what I've been doing:
 
     **Morning Wash:**
     - Salicylic Acid
@@ -365,6 +377,22 @@ def main():
     - Get at least 7-8 hours of sleep every night.
     - Exercise regularly to maintain overall health.
     - Practice meditation to reduce stress.
+    """)
+
+    st.subheader("Find me on the internet:")
+    st.write("""
+    - [LinkedIn](https://www.linkedin.com/in/earu723/)
+    - [YouTube](https://www.youtube.com/@earu723)
+    - [TikTok](https://www.tiktok.com/@y.earu)
+    - [Instagram](https://www.instagram.com/y.earu/)
+    - [Twitter](https://x.com/AndreaR91659141)
+    """)
+
+    st.image(image_url, caption='Me as a 4th year BME student', use_column_width=True)
+
+    st.write("""
+    Special thanks to Dana, a BASc in Biomedical Engineering, specializing in AI. Andrea's story spoke to me and I wanted to help him share this model with others.
+    You can find me [here](https://www.linkedin.com/in/danazarezankova/).
     """)
 
 if __name__ == "__main__":
