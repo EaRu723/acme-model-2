@@ -225,6 +225,11 @@ def get_message_and_emoji(severity_label):
     }
     return messages.get(severity_label, "Unknown severity")
 
+def save_user_consent(db, user_email, consent):
+    user = user_email.replace("@", "_").replace(".", "_")
+    user_doc_ref = db.collection("webApp").document(user)
+    user_doc_ref.set({'consent': consent}, merge=True)
+
 def main():
     initialize_session_state()
     database = init_firebase()
@@ -262,6 +267,15 @@ def main():
 
         email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
 
+        share_photos = st.checkbox(
+        "Yes, store my photos to help track my progress over time."
+        )
+        st.write(
+        "By choosing this option, your photos will be securely stored and accessible only to you, "
+        "allowing you to monitor your skin's progress over time. You can request deletion of your photos at any time."
+        )
+
+
         if st.button("Submit"):
             if email and (not is_valid_email(email)):
                 st.error("Please enter a valid email address.")
@@ -270,7 +284,10 @@ def main():
             else:
                 model = load_model()
                 all_users(database, email)
-                track_photo_submission(database)  # Add this line
+                track_photo_submission(database)
+                save_user_consent(database, email, share_photos)
+
+
                 image_paths = []
                 severity_labels = []
                 num_blemishes_list = []
