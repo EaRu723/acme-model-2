@@ -231,9 +231,21 @@ def get_message_and_emoji(severity_label):
     return messages.get(severity_label, "Unknown severity")
 
 def save_user_consent(db, user_email, consent):
+    if not user_email:
+        logger.error("Attempted to save user consent with empty email")
+        return  # Or handle this case as appropriate for your application
+
     user = user_email.replace("@", "_").replace(".", "_")
-    user_doc_ref = db.collection("webApp").document(user)
-    user_doc_ref.set({'consent': consent}, merge=True)
+    if not user:
+        logger.error(f"Invalid user email: {user_email}")
+        return  # Or handle this case as appropriate for your application
+
+    try:
+        user_doc_ref = db.collection("webApp").document(user)
+        user_doc_ref.set({'consent': consent}, merge=True)
+        logger.info(f"Successfully saved consent for user: {user}")
+    except Exception as e:
+        logger.error(f"Error saving user consent: {str(e)}")
 
 def main():
     initialize_session_state()
