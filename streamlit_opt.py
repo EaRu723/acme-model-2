@@ -13,6 +13,7 @@ from firebase_admin import credentials, firestore, storage
 from predict_on_img import ModelInit
 import tempfile
 from streamlit_modal import Modal
+from andreas_journey import show_andreas_journey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,6 +49,10 @@ def load_model():
             return model
         finally:
             os.unlink(temp_file.name)
+
+def navigation():
+    page = st.sidebar.radio("Go to", ["Home", "Andrea's Journey"])
+    return page
 
 def save_prediction(db, user_email, side, scores, img_url):
     user = user_email.replace("@", "_").replace(".", "_")
@@ -235,7 +240,14 @@ def main():
     database = init_firebase()
     page_visit_update(database)
 
-    # Initialize the modal state and visibility state
+    page = navigation()
+
+    if page == "Home":
+        show_home_page(database)
+    elif page == "Andrea's Journey":
+        show_andreas_journey(database)
+
+def show_home_page(database):
     st.session_state["show_modal"] = False
     if "show_upload_section" not in st.session_state:
         st.session_state["show_upload_section"] = False
