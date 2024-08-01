@@ -8,6 +8,7 @@ from email.mime.image import MIMEImage
 from PIL import Image
 import io
 import streamlit as st
+import streamlit.components.v1 as components
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from predict_on_img import ModelInit
@@ -247,6 +248,21 @@ def save_user_consent(db, user_email, consent):
     except Exception as e:
         logger.error(f"Error saving user consent: {str(e)}")
 
+def scroll_to_section():
+    st.session_state["show_upload_section"] = True
+    st.components.v1.html(
+        """
+        <script>
+        function scroll_to_upload() {
+            var upload_section = window.parent.document.querySelector('.stButton');
+            upload_section.scrollIntoView({ behavior: 'smooth' });
+        }
+        scroll_to_upload();
+        </script>
+        """,
+        height=0,
+    )
+
 def main():
     initialize_session_state()
     database = init_firebase()
@@ -264,11 +280,27 @@ def show_home_page(database):
     if "show_upload_section" not in st.session_state:
         st.session_state["show_upload_section"] = False
 
-    st.title("Take Control of Your Acne 💪")
-    st.subheader("Use AI to clear your skin.")
+    st.title("Get An Honest Acne Assessment")
+    st.subheader("Check in regularly to see if your skin is improving")
+
+        # Embed the Loom video
+    components.html(
+        """
+        <div style="position: relative; padding-bottom: 64.5933014354067%; height: 0;">
+            <iframe src="https://www.loom.com/embed/47fcb3ace2a24164824b8c78fb28673c?sid=de0d24db-29f7-4fc7-adcc-7fa82fcc31f3" 
+                    frameborder="0" 
+                    webkitallowfullscreen 
+                    mozallowfullscreen 
+                    allowfullscreen 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+            </iframe>
+        </div>
+        """,
+        height=500  # Adjust this value to control the height of the embedded video
+    )
 
     # Button to toggle the upload section
-    if st.button("Get Your Free Evaluation"):
+    if st.button("Get Your Free Evaluation", on_click=scroll_to_section):
         st.session_state["show_upload_section"] = True
 
     # Conditionally show the image upload section based on the button click
@@ -370,7 +402,7 @@ def show_home_page(database):
 
     st.subheader("Hi, I'm Andrea 👋")
     st.write("""
-After years of struggling with acne, I developed a tool to track and improve my skin. Now, I’m sharing it to help you find what works for you.    """)
+    After years of struggling with acne, I developed a tool to track and improve my skin. Now, I’m sharing it to help you find what works for you.    """)
     # Add before and after images
     before_image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/users%2F4WWZhb92MKMMjciIIYlr92cr1UM2%2Fentries%2F20240529%2Fimages%2F67283BDC-2C31-4D0A-BA18-2F167E05629E?alt=media&token=a8ca1ded-575a-4e77-94b6-a99b76496a32"
     after_image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/users%2F4WWZhb92MKMMjciIIYlr92cr1UM2%2Fentries%2F20240728%2Fimages%2FEEFD7102-B92F-439C-A175-570BEB8F4938?alt=media&token=bdcfd61b-13f7-4f0d-bfb5-25e11affc9e4"
@@ -385,11 +417,11 @@ After years of struggling with acne, I developed a tool to track and improve my 
 
     st.subheader("Why I Made This")
     st.write("""
-    After years of struggling with acne and trying countless products, I realized that tracking what worked was key to seeing real improvement. I found a [model](https://arxiv.org/abs/2403.00268) uses the gold-standard [Hayashi scale](https://pubmed.ncbi.nlm.nih.gov/18477223/) developed by researchers at MIT. My hope is that by sharing this with others, we can collectively find solutions that work.
+    After trying so many of the "solutions" on the market and finding nothing but frustration, I decided to try something new. I would experiemnt on myself and objectively measuring what worked and what didn't. I found a [model](https://arxiv.org/abs/2403.00268) uses the gold-standard [Hayashi scale](https://pubmed.ncbi.nlm.nih.gov/18477223/) developed by researchers at MIT. My hope is that by sharing this with others, we can collectively find solutions that work.
 
     I have nothing to sell; my goal is to genuinely help others on their journey to clearer skin. If this tool gains traction and proves helpful, we could potentially crowdsource the cure for acne together. Your feedback and experiences are invaluable in this process.
 
-    If you have any questions or need support, feel free to reach out to us at team@yacne.com.
+    If you have any questions or need support, feel free to reach out anytime: team@yacne.com.
     """)     
 
     st.header("Coming Soon…")
