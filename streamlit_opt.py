@@ -316,6 +316,29 @@ def scroll_to_section():
         height=0,
     )
 
+def routine_entry_form():
+    st.subheader("Your Skincare Routine")
+    
+    routine = st.text_area(
+        "Enter your routine",
+        placeholder="Provide as much detail as you can about skincare, diet, supplementation, and we'll get back to you with personalized feedback.",
+        help="Include information about your morning and evening skincare steps, diet, and any supplements you take."
+    )
+    
+    return routine
+
+def store_routine(_db, routine, user_email):
+    user = user_email.replace("@", "_").replace(".", "_")
+    date_today = datetime.datetime.now().strftime("%Y-%m-%d")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+    user_doc_ref = _db.collection("webApp").document(user)
+    routines_col_ref = user_doc_ref.collection("routines").document(date_today)
+    routines_col_ref.collection("entries").document(timestamp).set({
+        'routine': routine,
+        'date': datetime.datetime.now()
+    })
+    
 def main():
     initialize_session_state()
     database = init_firebase()
@@ -362,6 +385,8 @@ def show_home_page(database):
         st.subheader("Right")
         right_image = st.file_uploader("(we delete all photos within 24 hours)", key="right")
 
+    routine = routine_entry_form()
+
     email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
 
     share_photos = st.checkbox(
@@ -382,6 +407,9 @@ def show_home_page(database):
             if email:
                 all_users(database, email)
                 save_user_consent(database, email, share_photos)
+                # Store the routine if email is provided
+                if routine.strip():  # Only store if routine is not empty
+                    store_routine(database, routine, email)
             track_photo_submission(database)
 
             image_paths = []
