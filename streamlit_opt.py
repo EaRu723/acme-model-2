@@ -5,7 +5,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from PIL import Image
+from PIL import Image, ExifTags
 import io
 import streamlit as st
 import streamlit.components.v1 as components
@@ -95,11 +95,25 @@ def process_image(image, side, email, model, database):
         user_submit_update(database, email)
         try:
             img = Image.open(io.BytesIO(image.read()))
-            img.load()
+            
+            # Preserve orientation
+            for orientation in ExifTags.TAGS.keys():
+                if ExifTags.TAGS[orientation] == 'Orientation':
+                    break
+            
+            exif = dict(img._getexif().items())
+            
+            if orientation in exif:
+                if exif[orientation] == 3:
+                    img = img.rotate(180, expand=True)
+                elif exif[orientation] == 6:
+                    img = img.rotate(270, expand=True)
+                elif exif[orientation] == 8:
+                    img = img.rotate(90, expand=True)
 
             # Resize the image to make it smaller
             max_size = (400, 400)  # Adjust this tuple to the desired size
-            img.thumbnail(max_size)
+            img.thumbnail(max_size, Image.LANCZOS)
 
             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
                 img.save(temp_file.name, optimize=True, quality=85)
@@ -371,15 +385,13 @@ def show_home_page(database):
             severity_labels = []
             num_blemishes_list = []
 
-            for image, side, col in zip([left_image, right_image], ["left", "right"], [col1, col2]):
+            for image, side in zip([left_image, right_image], ["left", "right"]):
                 if image:
-                    with col:
-                        img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
-                        if severity_label is not None and num_blemishes is not None:
-                            st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
-                            severity_labels.append(severity_label)
-                            num_blemishes_list.append(num_blemishes)
-                            image_paths.append(img_path)
+                    img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
+                    if severity_label is not None and num_blemishes is not None:
+                        severity_labels.append(severity_label)
+                        num_blemishes_list.append(num_blemishes)
+                        image_paths.append(img_path)
 
             if severity_labels and num_blemishes_list:
                 summary_message = present_results(severity_labels, num_blemishes_list)
