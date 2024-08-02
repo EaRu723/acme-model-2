@@ -221,26 +221,62 @@ image_url = "https://firebasestorage.googleapis.com/v0/b/loltony.appspot.com/o/I
 # Function to determine the message and emoji
 def get_message_and_emoji(severity_label):
     messages = {
-            "Clear": "Fantastic news! Your skin is looking clear and radiant 😁. Keep up the amazing work with your skincare routine. We love seeing your progress, so check back in regularly. If you have any questions or need support, we're always here for you!",
-    
-            "Mild": "Your skin is looking great, with just a few minor blemishes 😃. Keep checking in with us to track your progress. We're cheering you on every step of the way!",
-    
-            "Moderate": "It looks like you're dealing with some moderate acne 😊, which is common and totally manageable. Your journey to clear skin is a process, and we're here to support you. Remember to check back regularly to see how your skin is doing and get fresh advice. We're in this together!",
-    
-            "Severe": "We understand that dealing with severe acne can be challenging 🙂, but you're not alone. Your journey is unique, and with the right care, things can improve. We're here to support you every step of the way. Keep checking in to monitor your progress. Together, we can make a difference!"
+        "Clear": "Your skin is looking clear and radiant! 😁",
+        "Mild": "Your skin is looking great, with just a few minor blemishes. 😃",
+        "Moderate": "You're dealing with some moderate acne, which is common and manageable. 😊",
+        "Severe": "We understand that dealing with severe acne can be challenging, but you're not alone. 🙂"
     }
     return messages.get(severity_label, "Unknown severity")
 
+def get_detailed_explanation(severity_label):
+    explanations = {
+        "Clear": "Fantastic news! Keep up the amazing work with your skincare routine. We love seeing your progress, so check back in regularly. If you have any questions or need support, we're always here for you!",
+        "Mild": "Keep checking in with us to track your progress. We're cheering you on every step of the way!",
+        "Moderate": "Your journey to clear skin is a process, and we're here to support you. Remember to check back regularly to see how your skin is doing and get fresh advice. We're in this together!",
+        "Severe": "Your journey is unique, and with the right care, things can improve. We're here to support you every step of the way. Keep checking in to monitor your progress. Together, we can make a difference!"
+    }
+    return explanations.get(severity_label, "")
+
+def present_results(severity_labels, num_blemishes_list):
+    overall_severity = max(severity_labels, key=severity_labels.count)  # Most frequent label
+    total_blemishes = sum(num_blemishes_list)
+    message = get_message_and_emoji(overall_severity)
+
+    st.header(f"Great news! Your overall acne severity is {overall_severity} 😃")
+
+    st.write(f"**Total blemishes:** {total_blemishes}")
+    
+    sides = ["Left", "Right"]
+    for i, (severity, blemishes) in enumerate(zip(severity_labels, num_blemishes_list)):
+        st.write(f"**{sides[i]} side:** {blemishes} blemishes ({severity})")
+
+    st.markdown(message)
+
+    if len(severity_labels) == 2 and num_blemishes_list[1] != num_blemishes_list[0]:
+        more_affected_side = "right" if num_blemishes_list[1] > num_blemishes_list[0] else "left"
+        st.info(f"💡 Your {more_affected_side} side shows more blemishes. You might want to pay extra attention to your {more_affected_side} side in your skincare routine.")
+    
+    st.success("Keep up the good work! Check in again next week to track your progress.")
+
+
+    summary = f"""
+    Great news! Your overall acne severity is {overall_severity} 😃
+    Total blemishes: {total_blemishes}
+    """
+
+    for i, (side, severity, blemishes) in enumerate(zip(sides, severity_labels, num_blemishes_list)):
+        summary += f"{side} side: {blemishes} blemishes ({severity})\n"
+
+    summary += f"\n{message}\n\nKeep up the good work! Check in again next week to track your progress."
+    
+    return summary
+
 def save_user_consent(db, user_email, consent):
     if not user_email:
-        logger.error("Attempted to save user consent with empty email")
-        return  # Or handle this case as appropriate for your application
+        logger.info("User consent not saved: No email provided")
+        return
 
     user = user_email.replace("@", "_").replace(".", "_")
-    if not user:
-        logger.error(f"Invalid user email: {user_email}")
-        return  # Or handle this case as appropriate for your application
-
     try:
         user_doc_ref = db.collection("webApp").document(user)
         user_doc_ref.set({'consent': consent}, merge=True)
@@ -277,16 +313,10 @@ def main():
 
 def show_home_page(database):
     st.session_state["show_modal"] = False
-    if "show_upload_section" not in st.session_state:
-        st.session_state["show_upload_section"] = False
 
     st.title("Is your acne improving?")
-    st.subheader("Get a detmatologist-level assessment in seconds. Check in regularly to see real progress over time.")
+    st.subheader("Get a dermatologist-level assessment in seconds. Check in regularly to see real progress over time.")
 
-    # Button to toggle the upload section
-    if st.button("Get Your Free Evaluation", on_click=scroll_to_section):
-        st.session_state["show_upload_section"] = True
-        
     # Embed the Loom video
     components.html(
         """
@@ -303,83 +333,61 @@ def show_home_page(database):
         height=500  # Adjust this value to control the height of the embedded video
     )
 
+    modal = Modal(key="result_modal", title="Results")
 
-    # Conditionally show the image upload section based on the button click
-    if st.session_state["show_upload_section"]:
-        modal = Modal(key="result_modal", title="Results")
+    col1, col2 = st.columns(2)
 
-        col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Left")
+        left_image = st.file_uploader("upload clear photos of your acne", key="left")
 
-        with col1:
-            st.subheader("Left")
-            left_image = st.file_uploader("upload clear photos of your acne", key="left")
+    with col2:
+        st.subheader("Right")
+        right_image = st.file_uploader("(we delete all photos within 24 hours)", key="right")
 
-        with col2:
-            st.subheader("Right")
-            right_image = st.file_uploader("(we delete all photos within 24 hours)", key="right")
+    email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
 
-        email = st.text_input("**Enter your email**: (optional) be the first to know about new features and get personal insights straight in your inbox", help="If you provide your email we'll keep track of your progress for you.")
+    share_photos = st.checkbox(
+    "Yes, store my photos to help track my progress over time."
+    )
+    st.write(
+    "By choosing this option, your photos will be securely stored and accessible only to you, "
+    "allowing you to monitor your skin's progress over time. You can request deletion of your photos at any time."
+    )
 
-        share_photos = st.checkbox(
-        "Yes, store my photos to help track my progress over time."
-        )
-        st.write(
-        "By choosing this option, your photos will be securely stored and accessible only to you, "
-        "allowing you to monitor your skin's progress over time. You can request deletion of your photos at any time."
-        )
-
-
-        if st.button("Submit"):
-            if email and (not is_valid_email(email)):
-                st.error("Please enter a valid email address.")
-            elif not (left_image or right_image):
-                st.error("Please upload at least one image before submitting.")
-            else:
-                model = load_model()
+    if st.button("Submit"):
+        if email and (not is_valid_email(email)):
+            st.error("Please enter a valid email address.")
+        elif not (left_image or right_image):
+            st.error("Please upload at least one image before submitting.")
+        else:
+            model = load_model()
+            if email:
                 all_users(database, email)
-                track_photo_submission(database)
                 save_user_consent(database, email, share_photos)
+            track_photo_submission(database)
 
+            image_paths = []
+            severity_labels = []
+            num_blemishes_list = []
 
-                image_paths = []
-                severity_labels = []
-                num_blemishes_list = []
+            for image, side, col in zip([left_image, right_image], ["left", "right"], [col1, col2]):
+                if image:
+                    with col:
+                        img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
+                        if severity_label is not None and num_blemishes is not None:
+                            st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
+                            severity_labels.append(severity_label)
+                            num_blemishes_list.append(num_blemishes)
+                            image_paths.append(img_path)
 
-                for image, side, col in zip([left_image, right_image], ["left", "right"], [col1, col2]):
-                    if image:
-                        with col:
-                            img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
-                            if severity_label and num_blemishes is not None:
-                                st.image(image, caption=f'{side.capitalize()} Image', use_column_width=True)
-                                st.write(f"**Severity:** {severity_label}")
-                                st.write(f"**Number of Blemishes:** {num_blemishes}")
-                                severity_labels.append(severity_label)
-                                num_blemishes_list.append(num_blemishes)
-                                image_paths.append(img_path)
-
-                                # Store scores in session state
-                                st.session_state[f"{side}_classification"] = severity_label
-                                st.session_state[f"{side}_score"] = num_blemishes
-
-                if severity_labels and num_blemishes_list:
-                    overall_severity = max(severity_labels, key=severity_labels.count)  # Most frequent label
-                    total_blemishes = sum(num_blemishes_list)
-                    message = get_message_and_emoji(overall_severity)
-
-                    summary_message = f"""
-                    {message}
-                    **Overall Severity:** {overall_severity}  
-                    **Total Number of Blemishes:** {total_blemishes}
-                    """
-
-                    st.session_state["results_message"] = summary_message
-                    st.session_state["show_modal"] = True  # Set flag to show modal
+            if severity_labels and num_blemishes_list:
+                summary_message = present_results(severity_labels, num_blemishes_list)
 
                 if email:
                     email_subject = "Your Acne Assessment Results"
                     email_body = f"Dear user,\n\nThank you for using our acne assessment tool. Here are your personalized results:\n\n{summary_message}\n\nBest regards,\nThe Team"
                     send_email(to_email=email, subject=email_subject, body=email_body, image_paths=image_paths, bcc_email=st.secrets["email"]["bcc_email"])
-
         # Modal handling
         if st.session_state.get("show_modal", False):
             with modal.container():
