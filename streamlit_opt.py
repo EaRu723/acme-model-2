@@ -338,7 +338,30 @@ def store_routine(_db, routine, user_email):
         'routine': routine,
         'date': datetime.datetime.now()
     })
+
+def track_user_interaction(db, has_image, has_routine):
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    analytics_ref = db.collection("webAppAnalytics").document('userInteractions')
+    today_interactions = analytics_ref.collection('dates').document(today)
     
+    try:
+        doc = today_interactions.get()
+        if not doc.exists:
+            today_interactions.set({
+                'imageSubmissions': 1 if has_image else 0,
+                'routineSubmissions': 1 if has_routine else 0,
+                'combinedSubmissions': 1 if (has_image and has_routine) else 0
+            })
+        else:
+            today_interactions.update({
+                'imageSubmissions': firestore.Increment(1) if has_image else firestore.Increment(0),
+                'routineSubmissions': firestore.Increment(1) if has_routine else firestore.Increment(0),
+                'combinedSubmissions': firestore.Increment(1) if (has_image and has_routine) else firestore.Increment(0)
+            })
+        logger.info(f"Successfully tracked user interaction: images={has_image}, routine={has_routine}")
+    except Exception as e:
+        logger.error(f"Error tracking user interaction: {str(e)}")
+
 def main():
     initialize_session_state()
     database = init_firebase()
@@ -404,14 +427,20 @@ def show_home_page(database):
             st.error("Please upload at least one image before submitting.")
         else:
             model = load_model()
+            has_image = bool(left_image or right_image)
+            has_routine = bool(routine.strip())
+            
+            track_user_interaction(database, has_image, has_routine)
+            
             if email:
                 all_users(database, email)
                 save_user_consent(database, email, share_photos)
-                # Store the routine if email is provided
-                if routine.strip():  # Only store if routine is not empty
+                if has_routine:
                     store_routine(database, routine, email)
+            
             track_photo_submission(database)
 
+            # Process images
             image_paths = []
             severity_labels = []
             num_blemishes_list = []
@@ -431,6 +460,7 @@ def show_home_page(database):
                     email_subject = "Your Acne Assessment Results"
                     email_body = f"Dear user,\n\nThank you for using our acne assessment tool. Here are your personalized results:\n\n{summary_message}\n\nBest regards,\nThe Team"
                     send_email(to_email=email, subject=email_subject, body=email_body, image_paths=image_paths, bcc_email=st.secrets["email"]["bcc_email"])
+
         # Modal handling
         if st.session_state.get("show_modal", False):
             with modal.container():
