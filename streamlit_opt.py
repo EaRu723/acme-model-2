@@ -280,10 +280,14 @@ def show_home_page(database):
     if "show_upload_section" not in st.session_state:
         st.session_state["show_upload_section"] = False
 
-    st.title("Get An Honest Acne Assessment")
-    st.subheader("Check in regularly to see if your skin is improving")
+    st.title("Is your acne improving?")
+    st.subheader("Get a detmatologist-level assessment in seconds. Check in regularly to see real progress over time.")
 
-        # Embed the Loom video
+    # Button to toggle the upload section
+    if st.button("Get Your Free Evaluation", on_click=scroll_to_section):
+        st.session_state["show_upload_section"] = True
+        
+    # Embed the Loom video
     components.html(
         """
         <div style="position: relative; padding-bottom: 64.5933014354067%; height: 0;">
@@ -299,25 +303,18 @@ def show_home_page(database):
         height=500  # Adjust this value to control the height of the embedded video
     )
 
-    # Button to toggle the upload section
-    if st.button("Get Your Free Evaluation", on_click=scroll_to_section):
-        st.session_state["show_upload_section"] = True
 
     # Conditionally show the image upload section based on the button click
     if st.session_state["show_upload_section"]:
         modal = Modal(key="result_modal", title="Results")
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
 
         with col1:
             st.subheader("Left")
             left_image = st.file_uploader("upload clear photos of your acne", key="left")
 
         with col2:
-            st.subheader("Front")
-            front_image = st.file_uploader("to be graded by the AI", key="front")
-
-        with col3:
             st.subheader("Right")
             right_image = st.file_uploader("(we delete all photos within 24 hours)", key="right")
 
@@ -335,7 +332,7 @@ def show_home_page(database):
         if st.button("Submit"):
             if email and (not is_valid_email(email)):
                 st.error("Please enter a valid email address.")
-            elif not (left_image or front_image or right_image):
+            elif not (left_image or right_image):
                 st.error("Please upload at least one image before submitting.")
             else:
                 model = load_model()
@@ -348,7 +345,7 @@ def show_home_page(database):
                 severity_labels = []
                 num_blemishes_list = []
 
-                for image, side, col in zip([left_image, front_image, right_image], ["left", "front", "right"], [col1, col2, col3]):
+                for image, side, col in zip([left_image, right_image], ["left", "right"], [col1, col2]):
                     if image:
                         with col:
                             img_path, severity_label, num_blemishes = process_image(image, side, email, model, database)
@@ -370,10 +367,9 @@ def show_home_page(database):
                     message = get_message_and_emoji(overall_severity)
 
                     summary_message = f"""
+                    {message}
                     **Overall Severity:** {overall_severity}  
                     **Total Number of Blemishes:** {total_blemishes}
-
-                    {message}
                     """
 
                     st.session_state["results_message"] = summary_message
