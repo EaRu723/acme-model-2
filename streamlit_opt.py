@@ -19,6 +19,9 @@ from andreas_journey import show_andreas_journey
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+st.set_page_config(initial_sidebar_state="collapsed")
+
+
 # Cache the Firebase initialization
 @st.cache_resource
 def init_firebase():
@@ -329,7 +332,7 @@ def show_home_page(database):
     st.session_state["show_modal"] = False
 
     st.title("Is your acne improving?")
-    st.subheader("Get a dermatologist-level assessment in seconds. Check in regularly to see real progress over time.")
+    st.subheader("Get a dermatologist-level assessment in seconds.")
 
     # Embed the Loom video
     components.html(
