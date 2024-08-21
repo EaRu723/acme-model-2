@@ -577,8 +577,8 @@ def display_social_links():
     st.image(image_url, caption='Me as a 4th year BME student', use_column_width=True)
 
     st.write("""
-    Special thanks to Dana, a BASc in Biomedical Engineering, specializing in AI. "Andrea's story spoke to me and I wanted to help him share this model with others.
-    You can find me [here"](https://www.linkedin.com/in/danazarezankova/).
+    Hi I'm Dana, a BASc in Biomedical Engineering, specializing in AI. Andrea's story spoke to me and I wanted to help him share this model with others.
+    You can find me [here](https://www.linkedin.com/in/danazarezankova/).
     """)
 
 def routine_entry_form():    
