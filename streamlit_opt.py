@@ -381,21 +381,9 @@ def show_home_page(database):
 
     display_video()
     display_andreas_intro()
-            # Introduce Dana
-    st.markdown("---")  # Horizontal rule to separate sections
-    st.header("Meet Dana, Co-Founder")
-    st.write("""
-    Hi, I'm Dana, a BASc in Biomedical Engineering specializing in AI. Andrea's story inspired me, and I wanted to help him share this model with others. 
-    Together, we're working to make a real difference in the lives of people struggling with acne.
-    """)
-
-    st.write("""
-    You can connect with me [here](https://www.linkedin.com/in/danazarezankova/).
-    """)
-
-    display_coming_soon()
     display_references()
-    # display_social_links()
+    display_coming_soon()
+
 
 def display_header():
     st.title("How's your acne?")
