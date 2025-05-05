@@ -80,21 +80,21 @@ def display_journal_entry(entry, previous_entry):
                 label="Left Side",
                 value=left_class,
                 delta=format_count_and_delta(left_count, left_delta),
-                delta_color="normal" if left_delta <= 0 else "inverse"
+                delta_color="normal" if left_delta is None or left_delta <= 0 else "inverse"
             )
         with col2:
             st.metric(
                 label="Right Side",
                 value=right_class,
                 delta=format_count_and_delta(right_count, right_delta),
-                delta_color="normal" if right_delta <= 0 else "inverse"
+                delta_color="normal" if right_delta is None or right_delta <= 0 else "inverse"
             )
         with col3:
             st.metric(
                 label="Overall",
                 value=total_class,
                 delta=format_count_and_delta(total_count, total_delta),
-                delta_color="normal" if total_delta <= 0 else "inverse"
+                delta_color="normal" if total_delta is None or total_delta <= 0 else "inverse"
             )
     
     st.markdown("---")
